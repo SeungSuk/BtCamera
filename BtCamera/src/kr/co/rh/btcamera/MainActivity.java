@@ -14,5 +14,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         //fff  dddddd
         Log.e("ssryu", "testr");
+        //test
+        
     }
 }
