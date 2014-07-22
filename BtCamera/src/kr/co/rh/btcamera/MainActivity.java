@@ -16,5 +16,7 @@ public class MainActivity extends Activity {
         Log.e("ssryu", "testr");
         //test
         
+        //teldld
+        
     }
 }
