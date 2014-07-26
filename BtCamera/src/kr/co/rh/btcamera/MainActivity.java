@@ -30,5 +30,8 @@ public class MainActivity extends Activity {
 			}
 		});
         
+        btn.setText("test");
+        ///rrrrr
+        
     }
 }
