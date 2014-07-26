@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
@@ -44,6 +45,7 @@ public class MainActivity extends Activity {
         //asdfssddd
         //ssdssss
         //rrrrr
+        TextView tv = null;
         //asdfssddd
     }
 }
