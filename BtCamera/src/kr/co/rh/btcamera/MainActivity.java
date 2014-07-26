@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
 
 public class MainActivity extends Activity {
 
@@ -18,6 +19,8 @@ public class MainActivity extends Activity {
         
         //teldld
         //aaaaaaa
+        
+        Button btn = new Button(this);
         
     }
 }
