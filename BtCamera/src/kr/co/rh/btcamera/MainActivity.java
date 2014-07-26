@@ -34,5 +34,7 @@ public class MainActivity extends Activity {
         
         btn.setText("testtestast");
         
+        Button btte = null;
+        
     }
 }
