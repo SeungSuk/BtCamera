@@ -38,6 +38,9 @@ public class MainActivity extends Activity {
         btn.setText("aaaa");
         
         Button btte = null;
+        //bbsbd
+        
+        //adfasfasdfs
         
     }
 }
