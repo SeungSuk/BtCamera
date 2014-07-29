@@ -9,21 +9,43 @@ import android.widget.Button;
 
 public class StartActivity extends Activity {
 
+	private Button btnServer, btnClient;
+
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {	
+	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
+
 		setContentView(R.layout.activity_start);
+
+		btnServer = (Button) findViewById(R.id.btnServer);
+		btnClient = (Button) findViewById(R.id.btnClient);
+
+		btnServer.setOnClickListener(mBtnClick);
+		btnClient.setOnClickListener(mBtnClick);
 		
-		Button btnServer = (Button)findViewById(R.id.btnServer);
-		
-		btnServer.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Intent intent = new Intent(StartActivity.this, MainActivity.class);
+	}
+
+	private View.OnClickListener mBtnClick = new View.OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			Intent intent = null;
+			switch (v.getId()) {
+			case R.id.btnServer:
+				intent = new Intent(StartActivity.this, ServerActivity.class);
+				break;
+			case R.id.btnClient:
+				intent = new Intent(StartActivity.this, ClientActivity.class);
+				break;
+
+			default:
+				break;
+			}
+
+			if (intent != null) {
 				startActivity(intent);
 			}
-		});		
-	}
+
+		}
+	};
 }
