@@ -1,73 +1,35 @@
 package kr.co.rh.apps.btcamera.main;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 import kr.co.rh.apps.btcamera.R;
+import kr.co.rh.apps.btcamera.bluetooth.data.SendData;
 import kr.co.rh.apps.btcamera.bluetooth.service.BluetoothChatService;
-import kr.co.rh.apps.btcamera.camera.CameraPreview;
-import kr.co.rh.apps.btcamera.comm.SingleMediaScanner;
+import kr.co.rh.apps.btcamera.comm.Constants;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
-import android.hardware.Camera;
-import android.hardware.Camera.Size;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
 import android.view.Window;
-import android.view.View.OnClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
-public class ClientActivity extends Activity implements CameraPreview.IFChangeImage {
+public class ClientActivity extends Activity {
 
-		//camera
-    	private CameraPreview mCameraPreview;
-    	private ImageView mNextView;
+		private StringBuffer mOutStringBuffer;
+		
+    	private ImageView mImgMainView;
     	private Bitmap mBitmap;
     	private Button btnSaveImg;
     	
         // Debugging
         private static final String TAG = "BluetoothChat";
         private static final boolean D = true;
-
-        // Message types sent from the BluetoothChatService Handler
-        public static final int MESSAGE_STATE_CHANGE = 1;
-        public static final int MESSAGE_READ = 2;
-        public static final int MESSAGE_WRITE = 3;
-        public static final int MESSAGE_DEVICE_NAME = 4;
-        public static final int MESSAGE_TOAST = 5;
-
-        // Key names received from the BluetoothChatService Handler
-        public static final String DEVICE_NAME = "device_name";
-        public static final String TOAST = "toast";
-
-        // Intent request codes
-        private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-        private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
-        private static final int REQUEST_ENABLE_BT = 3;
-
 
         // Name of the connected device
         private String mConnectedDeviceName = null;
@@ -84,21 +46,9 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
     		
     		requestWindowFeature(Window.FEATURE_NO_TITLE);
     		
-    		setContentView(R.layout.activity_main);
+    		setContentView(R.layout.activity_client);
     		
-    		
-    		mCameraPreview = (CameraPreview)findViewById(R.id.preView);
-    		mCameraPreview.setChangeImage(this);		
-    		
-    		mNextView = (ImageView)findViewById(R.id.nextView);
-    		btnSaveImg = (Button)findViewById(R.id.btnSaveImg);
-    		btnSaveImg.setOnClickListener(new View.OnClickListener() {
-    			
-    			@Override
-    			public void onClick(View v) {
-    				mCameraPreview.takePicture();				
-    			}
-    		});
+    		mImgMainView = (ImageView) findViewById(R.id.client_img_main);
     		
     		// Get local Bluetooth adapter
             mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -121,23 +71,17 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
             // setupChat() will then be called during onActivityResult
             if (!mBluetoothAdapter.isEnabled()) {
                 Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+                startActivityForResult(enableIntent, Constants.REQUEST_ENABLE_BT);
             // Otherwise, setup the chat session
             } else {
                 if (mChatService == null) setupChat();
             }
     	}
     	
-    	/**
-    	 * activity stop 시 다른 task 정지를 위한 구분값
-    	 */
-    	private boolean isStop = false;
-    	private boolean isPause = false;
     	
     	@Override
     	protected void onResume() {	
     		super.onResume();
-    		isPause = false;
     		
     		 // Performing this check in onResume() covers the case in which BT was
             // not enabled during onStart(), so we were paused to enable it...
@@ -151,113 +95,17 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
             }
     	}
     	
-    	@Override
-    	protected void onPause() {	
-    		super.onPause();
-    		isPause = true;		
-    	}
-    	
-    	@Override
-    	public void chgImage(final byte[] data, final Camera camera) {
-
-    		//event break
-    		if(isStop || isPause) return;
-    		
-    		Camera.Parameters params = camera.getParameters();
-    		int w = params.getPreviewSize().width;
-    		int h = params.getPreviewSize().height;
-    		int format = params.getPreviewFormat();
-    				
-    		ByteArrayOutputStream out = new ByteArrayOutputStream();
-    		Rect area = new Rect(0, 0, w, h);
-    		
-    		//screen size
-//    		Size size1 = params.getPreviewSize();
-    		
-    		//image size
-    		Size size = params.getPictureSize();
-    		
-    		int max = size.height > size.width ? size.height : size.width;
-    		int per = 2;
-    		
-    		while(max >= 800){			
-    				max = max / per;
-    				per += 2;			
-    		}
-    		
-    		BitmapFactory.Options opt = new BitmapFactory.Options();
-    		opt.inSampleSize = per;		
-    		
-    		YuvImage image = new YuvImage(data, format, w, h, null);
-    		image.compressToJpeg(area, 50, out);		
-    		
-    		if(mBitmap != null) mBitmap.recycle();
-    		
-    		try {
-    			isStop = true;
-    			
-    			//thumbnail image change time delay
-    			Thread.sleep(500);
-    			
-    		} catch (InterruptedException e) {
-    			e.printStackTrace();
-    		}	
-    		
-    		isStop = false;
-    		mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
-    		mNextView.setImageBitmap(mBitmap);
-    	}
-
-    	/**
-    	 * 파일저장
-    	 */
-    	@Override
-    	public void saveImage(byte[] data) {
-    		String path = Environment.getExternalStorageDirectory() + File.separator + "test" ;
-    		String fileNm = File.separator + "1.jpg";
-    		FileOutputStream fo = null;
-    		
-    		try{
-    			File f = new File(path);			
-    			if(!f.exists()){				
-    				f.mkdirs();
-    			}
-    			
-    			fo = new FileOutputStream(path + fileNm);
-    			fo.write(data);
-    			fo.close();
-    		}catch(FileNotFoundException fne){
-    			fne.printStackTrace();			
-    		}catch (IOException ioe) {
-    			ioe.printStackTrace();			
-    		}catch (Exception e) {
-    			e.printStackTrace();
-    		}finally {
-    			if(fo != null){
-    				try {
-    					fo.close();
-    					fo=null;
-    				} catch (IOException e) {					
-    					e.printStackTrace();
-    				}
-    			}
-    		}
-    		
-    		//media scan 
-    		
-    		//kitkat
-    		File scanFile = new File(path + fileNm);
-    		SingleMediaScanner mediaScanner = new SingleMediaScanner(ClientActivity.this, scanFile);
-    		
-    		//ice
-    		
-    	}
     	
     	private void setupChat() {
             Log.d(TAG, "setupChat()");
 
             // Initialize the BluetoothChatService to perform bluetooth connections
             mChatService = new BluetoothChatService(this, mHandler);
+            
+            mOutStringBuffer = new StringBuffer("");
+            
+            Intent serverIntent = new Intent(this, DeviceListActivity.class);
+            startActivityForResult(serverIntent, Constants.REQUEST_CONNECT_DEVICE_INSECURE);
 
         }
     	
@@ -269,88 +117,44 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
             if (mChatService != null) mChatService.stop();
     	}
     	
-        private void ensureDiscoverable() {
-            if(D) Log.d(TAG, "ensure discoverable");
-            if (mBluetoothAdapter.getScanMode() !=
-                BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-                Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-                discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-                startActivity(discoverableIntent);
-            }
-        }
-        
-        /**
-         * Sends a message.
-         * @param message  A string of text to send.
-         */
-        private void sendMessage(String message) {
-            // Check that we're actually connected before trying anything
-            if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
-                Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Check that there's actually something to send
-            if (message.length() > 0) {
-                // Get the message bytes and tell the BluetoothChatService to write
-                byte[] send = message.getBytes();
-                mChatService.write(send);
-            
-            }
-        }
-        
-
-        private final void setStatus(int resId) {
-            final ActionBar actionBar = getActionBar();
-            actionBar.setSubtitle(resId);
-        }
-
-        private final void setStatus(CharSequence subTitle) {
-            final ActionBar actionBar = getActionBar();
-            actionBar.setSubtitle(subTitle);
-        }
-
         // The Handler that gets information back from the BluetoothChatService
         private final Handler mHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 switch (msg.what) {
-                case MESSAGE_STATE_CHANGE:
+                case Constants.MESSAGE_STATE_CHANGE:
                     if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                     switch (msg.arg1) {
                     case BluetoothChatService.STATE_CONNECTED:
-                        setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
 //                        mConversationArrayAdapter.clear();
                         break;
                     case BluetoothChatService.STATE_CONNECTING:
-                        setStatus(R.string.title_connecting);
                         break;
                     case BluetoothChatService.STATE_LISTEN:
                     case BluetoothChatService.STATE_NONE:
-                        setStatus(R.string.title_not_connected);
                         break;
                     }
                     break;
-                case MESSAGE_WRITE:
-                    byte[] writeBuf = (byte[]) msg.obj;
-                    // construct a string from the buffer
-                    String writeMessage = new String(writeBuf);
-//                    mConversationArrayAdapter.add("Me:  " + writeMessage);
+                case Constants.MESSAGE_WRITE:
+//                    byte[] writeBuf = (byte[]) msg.obj;
+//                    // construct a string from the buffer
+//                    String writeMessage = new String(writeBuf);
+////                    mConversationArrayAdapter.add("Me:  " + writeMessage);
                     break;
-                case MESSAGE_READ:
-                    byte[] readBuf = (byte[]) msg.obj;
-                    // construct a string from the valid bytes in the buffer
-                    String readMessage = new String(readBuf, 0, msg.arg1);
-//                    mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+                case Constants.MESSAGE_READ:
+                	SendData data = (SendData) msg.obj;
+                	Toast.makeText(getApplicationContext(), data.getTitle(), Toast.LENGTH_SHORT).show();
+                	mImgMainView.setImageBitmap(data.getImg());
+                    Log.e("ssryu", "size : " + msg.arg1);
                     break;
-                case MESSAGE_DEVICE_NAME:
+                case Constants.MESSAGE_DEVICE_NAME:
                     // save the connected device's name
-                    mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
+                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
                     Toast.makeText(getApplicationContext(), "Connected to "
                                    + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                     break;
-                case MESSAGE_TOAST:
-                    Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
+                case Constants.MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(Constants.TOAST),
                                    Toast.LENGTH_SHORT).show();
                     break;
                 }
@@ -360,19 +164,19 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
         public void onActivityResult(int requestCode, int resultCode, Intent data) {
             if(D) Log.d(TAG, "onActivityResult " + resultCode);
             switch (requestCode) {
-            case REQUEST_CONNECT_DEVICE_SECURE:
+            case Constants.REQUEST_CONNECT_DEVICE_SECURE:
                 // When DeviceListActivity returns with a device to connect
                 if (resultCode == Activity.RESULT_OK) {
                     connectDevice(data, true);
                 }
                 break;
-            case REQUEST_CONNECT_DEVICE_INSECURE:
+            case Constants.REQUEST_CONNECT_DEVICE_INSECURE:
                 // When DeviceListActivity returns with a device to connect
                 if (resultCode == Activity.RESULT_OK) {
                     connectDevice(data, false);
                 }
                 break;
-            case REQUEST_ENABLE_BT:
+            case Constants.REQUEST_ENABLE_BT:
                 // When the request to enable Bluetooth returns
                 if (resultCode == Activity.RESULT_OK) {
                     // Bluetooth is now enabled, so set up a chat session
@@ -394,34 +198,5 @@ public class ClientActivity extends Activity implements CameraPreview.IFChangeIm
             BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
             // Attempt to connect to the device
             mChatService.connect(device, secure);
-        }
-
-        @Override
-        public boolean onCreateOptionsMenu(Menu menu) {
-            MenuInflater inflater = getMenuInflater();
-            inflater.inflate(R.menu.option_menu, menu);
-            return true;
-        }
-
-        @Override
-        public boolean onOptionsItemSelected(MenuItem item) {
-            Intent serverIntent = null;
-            switch (item.getItemId()) {
-            case R.id.secure_connect_scan:
-                // Launch the DeviceListActivity to see devices and do scan
-                serverIntent = new Intent(this, DeviceListActivity.class);
-                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-                return true;
-            case R.id.insecure_connect_scan:
-                // Launch the DeviceListActivity to see devices and do scan
-                serverIntent = new Intent(this, DeviceListActivity.class);
-                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
-                return true;
-            case R.id.discoverable:
-                // Ensure this device is discoverable by others
-                ensureDiscoverable();
-                return true;
-            }
-            return false;
         }
 }
