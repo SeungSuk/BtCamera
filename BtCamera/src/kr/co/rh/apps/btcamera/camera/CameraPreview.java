@@ -271,8 +271,8 @@ public class CameraPreview extends SurfaceView implements
 		
 		String[] arrSize = size.replace(" ", "").split("/");
 		
-		int w = Integer.getInteger(arrSize[0]);
-		int h = Integer.getInteger(arrSize[1]);
+		int w = Integer.parseInt(arrSize[0]);
+		int h = Integer.parseInt(arrSize[1]);
 		
 		mParameters.setPictureSize(w, h);
 	}
