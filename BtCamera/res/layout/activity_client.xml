@@ -7,5 +7,16 @@
         android:id="@+id/client_img_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+    
+    <Button android:id="@+id/btnShutter"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentLeft="true"
+        android:text="shutter"/>
+    <Button android:id="@+id/btnResolution"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentRight="true"
+        android:text="Resolution"/>
 
 </RelativeLayout>
