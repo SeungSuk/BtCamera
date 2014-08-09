@@ -139,6 +139,8 @@ public class ClientActivity extends Activity {
 		if (mChatService != null)
 			mChatService.stop();
 	}
+	
+	Bitmap bitmap;
 
 	// The Handler that gets information back from the BluetoothChatService
 	private final Handler mHandler = new Handler() {
@@ -170,6 +172,11 @@ public class ClientActivity extends Activity {
 				Toast.makeText(getApplicationContext(), data.getTitle(),
 						Toast.LENGTH_SHORT).show();
 				mImgMainView.setImageBitmap(data.getImg());
+				if(bitmap != null){
+					bitmap.recycle();
+				}
+				bitmap = data.getImg();
+				
 				Log.e("ssryu", "size : " + msg.arg1);
 				break;
 			case Constants.MESSAGE_DEVICE_NAME:
