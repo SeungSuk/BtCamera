@@ -6,6 +6,7 @@ import java.io.Serializable;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapFactory.Options;
 
 public class SendData implements Serializable{
 	
@@ -47,7 +48,10 @@ public class SendData implements Serializable{
         while((b = in.read()) != -1)
             byteStream.write(b);
         byte bitmapBytes[] = byteStream.toByteArray();
-        img = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+        Options option = new Options();
+        option.inPurgeable = true;       // 메모리를 줄여주는 옵션
+        option.inDither = true; 
+        img = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length, option);
     }
 
 }
