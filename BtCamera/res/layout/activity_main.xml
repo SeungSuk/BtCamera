@@ -22,11 +22,4 @@
         android:layout_centerVertical="true"
         android:background="@drawable/ic_launcher"/>
     
-    <Button android:id="@+id/btnSendImg"
-        android:layout_width="100dp"
-        android:layout_height="100dp" 
-        android:layout_alignParentRight="true"
-        android:layout_alignParentBottom="true"
-        android:background="@drawable/ic_launcher"/>
-
 </RelativeLayout>

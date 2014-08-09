@@ -43,7 +43,6 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
     	private ImageView mNextView;
     	private Bitmap mBitmap;
     	private Button btnSaveImg;
-    	private Button btnSendImg;
     	
         // Debugging
         private static final String TAG = "BluetoothChat";
@@ -79,19 +78,6 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
     				mCameraPreview.takePicture();				
     			}
     		});
-    		
-    		btnSendImg = (Button)findViewById(R.id.btnSendImg);
-    		btnSendImg.setOnClickListener(new View.OnClickListener() {
-				
-				@Override
-				public void onClick(View v) {
-					if(mChatService != null){
-						mNextView.buildDrawingCache();
-						Bitmap bmap = mNextView.getDrawingCache();
-						mChatService.write(bmap);
-					}
-				}
-			});
     		
     		// Get local Bluetooth adapter
             mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -152,7 +138,7 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
     	
     	@Override
     	public void chgImage(final byte[] data, final Camera camera) {
-
+    		Log.e("ssryu", "chgImage : " + System.currentTimeMillis()/1000);
     		//event break
     		if(isStop || isPause) return;
     		
@@ -173,7 +159,7 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
     		int max = size.height > size.width ? size.height : size.width;
     		int per = 2;
     		
-    		while(max >= 800){			
+    		while(max >= 128){			
     				max = max / per;
     				per += 2;			
     		}
@@ -186,20 +172,31 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
     		
     		if(mBitmap != null) mBitmap.recycle();
     		
-    		try {
+//    		try {
     			isStop = true;
-    			
-    			//thumbnail image change time delay
-    			Thread.sleep(500);
-    			
-    		} catch (InterruptedException e) {
-    			e.printStackTrace();
-    		}	
+//    			
+//    			//thumbnail image change time delay
+//    			Thread.sleep(500);
+//    			
+//    		} catch (InterruptedException e) {
+//    			e.printStackTrace();
+//    		}	
     		
     		isStop = false;
     		mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
-    		mNextView.setImageBitmap(mBitmap);
+//    		mNextView.setImageBitmap(mBitmap);
+    		
+    		if(mChatService != null){
+//				mNextView.buildDrawingCache();
+//				Bitmap bmap = mNextView.getDrawingCache();
+//    			Log.e("ssryu", "before time : " + System.currentTimeMillis()/1000);
+    			Log.e("ssryu", "Bitmap size : " + mBitmap.getByteCount());
+				mChatService.write(mBitmap);
+				Log.e("ssryu", "after time : " + System.currentTimeMillis()/1000);
+			}
+    		
     	}
+    	
 
     	/**
     	 * 파일저장

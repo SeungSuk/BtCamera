@@ -237,10 +237,12 @@ public class BluetoothChatService {
         // Create temporary object
         ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
+        Log.e("ssryu", "synchronized before : " + System.currentTimeMillis()/1000);
         synchronized (this) {
             if (mState != STATE_CONNECTED) return;
             r = mConnectedThread;
         }
+        Log.e("ssryu", "synchronized after : " + System.currentTimeMillis()/1000);
         // Perform the write unsynchronized
         r.write(img);
     }
