@@ -90,13 +90,18 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
 			@Override
 			public void onClick(View arg0) {
 				List<String> list = mCameraPreview.getStringPictureSizes();
-				ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this, 
+				final ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this, 
 						android.R.layout.simple_list_item_single_choice, list);
 				AlertDialog.Builder alert = new AlertDialog.Builder(ServerActivity.this);
 				alert.setAdapter(adapter, new OnClickListener() {
 					
 					@Override
-					public void onClick(DialogInterface arg0, int arg1) {
+					public void onClick(DialogInterface dialog, int which) {
+						
+						String size = adapter.getItem(which);
+						mCameraPreview.chgPictureSize(size);
+						
+						dialog.dismiss();
 						
 					}
 				});
