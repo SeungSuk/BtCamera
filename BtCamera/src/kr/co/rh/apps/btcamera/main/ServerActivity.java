@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import kr.co.rh.apps.btcamera.R;
 import kr.co.rh.apps.btcamera.bluetooth.service.BluetoothChatService;
@@ -12,8 +13,12 @@ import kr.co.rh.apps.btcamera.camera.CameraPreview;
 import kr.co.rh.apps.btcamera.comm.Constants;
 import kr.co.rh.apps.btcamera.comm.SingleMediaScanner;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -32,6 +37,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -42,7 +48,7 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
 	private CameraPreview mCameraPreview;
 	private ImageView mNextView;
 	private Bitmap mBitmap;
-	private Button btnSaveImg;
+	private Button btnSaveImg, btnChgResolution;
 
 	// Debugging
 	private static final String TAG = "BluetoothChat";
@@ -75,6 +81,25 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
 			@Override
 			public void onClick(View v) {
 				mCameraPreview.takePicture();				
+			}
+		});
+		
+		btnChgResolution = (Button)findViewById(R.id.btnChgResolution);
+		btnChgResolution.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View arg0) {
+				List<String> list = mCameraPreview.getStringPictureSizes();
+				ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this, 
+						android.R.layout.simple_list_item_single_choice, list);
+				AlertDialog.Builder alert = new AlertDialog.Builder(ServerActivity.this);
+				alert.setAdapter(adapter, new OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface arg0, int arg1) {
+						
+					}
+				});
 			}
 		});
 
