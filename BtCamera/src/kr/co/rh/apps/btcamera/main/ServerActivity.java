@@ -14,7 +14,6 @@ import kr.co.rh.apps.btcamera.comm.Constants;
 import kr.co.rh.apps.btcamera.comm.SingleMediaScanner;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.DialogInterface;
@@ -44,373 +43,393 @@ import android.widget.Toast;
 
 public class ServerActivity extends Activity implements CameraPreview.IFChangeImage {
 
-	//camera
-	private CameraPreview mCameraPreview;
-	private ImageView mNextView;
-	private Bitmap mBitmap;
-	private Button btnSaveImg, btnChgResolution;
+    //camera
+    private CameraPreview mCameraPreview;
 
-	// Debugging
-	private static final String TAG = "BluetoothChat";
-	private static final boolean D = true;
+    private ImageView mNextView;
 
-	// Name of the connected device
-	private String mConnectedDeviceName = null;
+    private Bitmap mBitmap;
 
-	// Local Bluetooth adapter
-	private BluetoothAdapter mBluetoothAdapter = null;
+    private Button btnSaveImg, btnChgResolution;
 
-	// Member object for the chat services
-	private BluetoothChatService mChatService = null;
+    // Debugging
+    private static final String TAG = "BluetoothChat";
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
+    private static final boolean D = true;
 
-		setContentView(R.layout.activity_main);
+    // Name of the connected device
+    private String mConnectedDeviceName = null;
 
+    // Local Bluetooth adapter
+    private BluetoothAdapter mBluetoothAdapter = null;
 
-		mCameraPreview = (CameraPreview)findViewById(R.id.preView);
-		mCameraPreview.setChangeImage(this);		
-		mNextView = (ImageView)findViewById(R.id.nextView);
-		btnSaveImg = (Button)findViewById(R.id.btnSaveImg);
-		btnSaveImg.setOnClickListener(new View.OnClickListener() {
+    // Member object for the chat services
+    private BluetoothChatService mChatService = null;
 
-			@Override
-			public void onClick(View v) {
-				mCameraPreview.takePicture();				
-			}
-		});
-		
-		btnChgResolution = (Button)findViewById(R.id.btnChgResolution);
-		btnChgResolution.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View arg0) {
-				List<String> list = mCameraPreview.getStringPictureSizes();
-				final ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this, 
-						android.R.layout.simple_list_item_single_choice, list);
-				AlertDialog.Builder alert = new AlertDialog.Builder(ServerActivity.this);
-				alert.setAdapter(adapter, new OnClickListener() {
-					
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						
-						String size = adapter.getItem(which);
-						mCameraPreview.chgPictureSize(size);
-						
-						dialog.dismiss();
-						
-					}
-				});
-				alert.show();
-			}
-		});
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
 
-		// Get local Bluetooth adapter
-		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        setContentView(R.layout.activity_main);
 
-		// If the adapter is null, then Bluetooth is not supported
-		if (mBluetoothAdapter == null) {
-			Toast.makeText(this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
-			finish();
-			return;
-		}
+        mCameraPreview = (CameraPreview)findViewById(R.id.preView);
+        mCameraPreview.setChangeImage(this);
+        mNextView = (ImageView)findViewById(R.id.nextView);
+        btnSaveImg = (Button)findViewById(R.id.btnSaveImg);
+        btnSaveImg.setOnClickListener(new View.OnClickListener() {
 
+            @Override
+            public void onClick(View v) {
+                mCameraPreview.takePicture();
+            }
+        });
 
-	}
+        btnChgResolution = (Button)findViewById(R.id.btnChgResolution);
+        btnChgResolution.setOnClickListener(new View.OnClickListener() {
 
-	@Override
-	protected void onStart() {    	
-		super.onStart();
+            @Override
+            public void onClick(View arg0) {
+                List<String> list = mCameraPreview.getStringPictureSizes();
+                final ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this,
+                                                                              android.R.layout.simple_list_item_single_choice,
+                                                                              list);
+                AlertDialog.Builder alert = new AlertDialog.Builder(ServerActivity.this);
+                alert.setAdapter(adapter, new OnClickListener() {
 
-		// If BT is not on, request that it be enabled.
-		// setupChat() will then be called during onActivityResult
-		if (!mBluetoothAdapter.isEnabled()) {
-			Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-			startActivityForResult(enableIntent, Constants.REQUEST_ENABLE_BT);
-			// Otherwise, setup the chat session
-		} else {
-			if (mChatService == null) setupChat();
-		}
-	}
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
 
-	/**
-	 * activity stop 시 다른 task 정지를 위한 구분값
-	 */
-	private boolean isStop = false;
-	private boolean isPause = false;
+                        String size = adapter.getItem(which);
+                        mCameraPreview.chgPictureSize(size);
 
-	@Override
-	protected void onResume() {	
-		super.onResume();
-		isPause = false;
+                        dialog.dismiss();
 
-		// Performing this check in onResume() covers the case in which BT was
-		// not enabled during onStart(), so we were paused to enable it...
-		// onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
-		if (mChatService != null) {
-			// Only if the state is STATE_NONE, do we know that we haven't started already
-			if (mChatService.getState() == BluetoothChatService.STATE_NONE) {
-				// Start the Bluetooth chat services
-				mChatService.start();
-			}
-		}
-	}
+                    }
+                });
+                alert.show();
+            }
+        });
 
-	@Override
-	protected void onPause() {	
-		super.onPause();
-		isPause = true;		
-	}
+        // Get local Bluetooth adapter
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
-	@Override
-	public void chgImage(final byte[] data, final Camera camera) {
-		Log.e("ssryu", "chgImage : " + System.currentTimeMillis()/1000);
-		//event break
-		if(isStop || isPause) return;
+        // If the adapter is null, then Bluetooth is not supported
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
-		Camera.Parameters params = camera.getParameters();
-		int w = params.getPreviewSize().width;
-		int h = params.getPreviewSize().height;
-		int format = params.getPreviewFormat();
+    }
 
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		Rect area = new Rect(0, 0, w, h);
+    @Override
+    protected void onStart() {
+        super.onStart();
 
-		//screen size
-		//    		Size size1 = params.getPreviewSize();
+        // If BT is not on, request that it be enabled.
+        // setupChat() will then be called during onActivityResult
+        if (!mBluetoothAdapter.isEnabled()) {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, Constants.REQUEST_ENABLE_BT);
+            // Otherwise, setup the chat session
+        } else {
+            if (mChatService == null) {
+                setupChat();
+            }
+        }
+    }
 
-		//image size
-		Size size = params.getPictureSize();
+    /**
+     * activity stop 시 다른 task 정지를 위한 구분값
+     */
+    private boolean isStop = false;
 
-		int max = size.height > size.width ? size.height : size.width;
-		int per = 2;
+    private boolean isPause = false;
 
-		while(max >= 64){			
-			max = max / per;
-			per += 2;			
-		}
+    @Override
+    protected void onResume() {
+        super.onResume();
+        isPause = false;
 
-		BitmapFactory.Options opt = new BitmapFactory.Options();
-		opt.inSampleSize = per;		
+        // Performing this check in onResume() covers the case in which BT was
+        // not enabled during onStart(), so we were paused to enable it...
+        // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
+        if (mChatService != null) {
+            // Only if the state is STATE_NONE, do we know that we haven't started already
+            if (mChatService.getState() == BluetoothChatService.STATE_NONE) {
+                // Start the Bluetooth chat services
+                mChatService.start();
+            }
+        }
+    }
 
-		YuvImage image = new YuvImage(data, format, w, h, null);
-		image.compressToJpeg(area, 80, out);		
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isPause = true;
+    }
 
-		if(mBitmap != null) mBitmap.recycle();
+    @Override
+    public void chgImage(final byte[] data, final Camera camera) {
+        Log.e("ssryu", "chgImage : " + System.currentTimeMillis() / 1000);
+        //event break
+        if (isStop || isPause) {
+            return;
+        }
 
-		//    		try {
-			isStop = true;
-			//    			
-			//    			//thumbnail image change time delay
-			//    			Thread.sleep(500);
-			//    			
-			//    		} catch (InterruptedException e) {
-			//    			e.printStackTrace();
-			//    		}	
+        Camera.Parameters params = camera.getParameters();
+        int w = params.getPreviewSize().width;
+        int h = params.getPreviewSize().height;
+        int format = params.getPreviewFormat();
 
-			isStop = false;
-			mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
-			//    		mNextView.setImageBitmap(mBitmap);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Rect area = new Rect(0, 0, w, h);
 
-			if(mChatService != null){
-				//				mNextView.buildDrawingCache();
-				//				Bitmap bmap = mNextView.getDrawingCache();
-				//    			Log.e("ssryu", "before time : " + System.currentTimeMillis()/1000);
-				Log.e("ssryu", "Bitmap size : " + mBitmap.getByteCount());
-				mChatService.write(mBitmap);
-				Log.e("ssryu", "after time : " + System.currentTimeMillis()/1000);
-			}
+        //screen size
+        //    		Size size1 = params.getPreviewSize();
 
-	}
+        //image size
+        Size size = params.getPictureSize();
 
+        int max = size.height > size.width ? size.height : size.width;
+        int per = 2;
 
-	/**
-	 * 파일저장
-	 */
-	@Override
-	public void saveImage(byte[] data) {
-		String path = Environment.getExternalStorageDirectory() + File.separator + "test" ;
-		String fileNm = File.separator + "1.jpg";
-		FileOutputStream fo = null;
+        while (max >= 512) {
+            max = max / per;
+            per += 2;
+        }
 
-		try{
-			File f = new File(path);			
-			if(!f.exists()){				
-				f.mkdirs();
-			}
+        BitmapFactory.Options opt = new BitmapFactory.Options();
+        opt.inSampleSize = per;
 
-			fo = new FileOutputStream(path + fileNm);
-			fo.write(data);
-			fo.close();
-		}catch(FileNotFoundException fne){
-			fne.printStackTrace();			
-		}catch (IOException ioe) {
-			ioe.printStackTrace();			
-		}catch (Exception e) {
-			e.printStackTrace();
-		}finally {
-			if(fo != null){
-				try {
-					fo.close();
-					fo=null;
-				} catch (IOException e) {					
-					e.printStackTrace();
-				}
-			}
-		}
+        YuvImage image = new YuvImage(data, format, w, h, null);
+        image.compressToJpeg(area, 70, out);
 
-		//media scan 
+        Log.e("ssryu", "area : " + area);
 
-		//kitkat
-		File scanFile = new File(path + fileNm);
-		SingleMediaScanner mediaScanner = new SingleMediaScanner(ServerActivity.this, scanFile);
+        if (mBitmap != null) {
+            mBitmap.recycle();
+        }
 
-		//ice
+        //    		try {
+        isStop = true;
+        //    			
+        //    			//thumbnail image change time delay
+        //    			Thread.sleep(500);
+        //    			
+        //    		} catch (InterruptedException e) {
+        //    			e.printStackTrace();
+        //    		}	
 
-	}
+        isStop = false;
+        mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
+        //    		mNextView.setImageBitmap(mBitmap);
 
-	private void setupChat() {
-		Log.d(TAG, "setupChat()");
+        if (mChatService != null) {
+            //				mNextView.buildDrawingCache();
+            //				Bitmap bmap = mNextView.getDrawingCache();
+            //    			Log.e("ssryu", "before time : " + System.currentTimeMillis()/1000);
+            //            Log.e("ssryu", "Bitmap size : " + mBitmap.getByteCount());
+            mChatService.write(mBitmap);
+            //            mChatService.writes(out.toByteArray());
+            Log.e("ssryu", "after time : " + System.currentTimeMillis() / 1000);
+        }
 
-		// Initialize the BluetoothChatService to perform bluetooth connections
-		mChatService = new BluetoothChatService(this, mHandler);
+    }
 
-		ensureDiscoverable();
+    /**
+     * 파일저장
+     */
+    @Override
+    public void saveImage(byte[] data) {
+        String path = Environment.getExternalStorageDirectory() + File.separator + "test";
+        String fileNm = File.separator + "1.jpg";
+        FileOutputStream fo = null;
 
-	}
+        try {
+            File f = new File(path);
+            if (!f.exists()) {
+                f.mkdirs();
+            }
 
-	@Override
-	protected void onDestroy() {    	
-		super.onDestroy();
+            fo = new FileOutputStream(path + fileNm);
+            fo.write(data);
+            fo.close();
+        } catch (FileNotFoundException fne) {
+            fne.printStackTrace();
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (fo != null) {
+                try {
+                    fo.close();
+                    fo = null;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
 
-		// Stop the Bluetooth chat services
-		if (mChatService != null) mChatService.stop();
-	}
+        //media scan 
 
-	private void ensureDiscoverable() {
-		if(D) Log.d(TAG, "ensure discoverable");
-		if (mBluetoothAdapter.getScanMode() !=
-				BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-			Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-			discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-			startActivity(discoverableIntent);
-		}
-	}
+        //kitkat
+        File scanFile = new File(path + fileNm);
+        SingleMediaScanner mediaScanner = new SingleMediaScanner(ServerActivity.this, scanFile);
 
+        //ice
 
-	// The Handler that gets information back from the BluetoothChatService
-	private final Handler mHandler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			switch (msg.what) {
-			case Constants.MESSAGE_STATE_CHANGE:
-				if(D) Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
-				switch (msg.arg1) {
-				case BluetoothChatService.STATE_CONNECTED:
-					//                        mConversationArrayAdapter.clear();
-					break;
-				case BluetoothChatService.STATE_CONNECTING:
-					break;
-				case BluetoothChatService.STATE_LISTEN:
-				case BluetoothChatService.STATE_NONE:
-					break;
-				}
-				break;
-			case Constants.MESSAGE_WRITE:
-				//                    byte[] writeBuf = (byte[]) msg.obj;
-				//                    // construct a string from the buffer
-				//                    String writeMessage = new String(writeBuf);
-				////                    mConversationArrayAdapter.add("Me:  " + writeMessage);
-				break;
-			case Constants.MESSAGE_READ:
-				//                    byte[] readBuf = (byte[]) msg.obj;
-				//                    // construct a string from the valid bytes in the buffer
-				//                    String readMessage = new String(readBuf, 0, msg.arg1);
-				////                    mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
-				break;
-			case Constants.MESSAGE_DEVICE_NAME:
-				// save the connected device's name
-				mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
-				Toast.makeText(getApplicationContext(), "Connected to "
-						+ mConnectedDeviceName, Toast.LENGTH_SHORT).show();
-				break;
-			case Constants.MESSAGE_TOAST:
-				Toast.makeText(getApplicationContext(), msg.getData().getString(Constants.TOAST),
-						Toast.LENGTH_SHORT).show();
-				break;
-			}
-		}
-	};
+    }
 
-	public void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if(D) Log.d(TAG, "onActivityResult " + resultCode);
-		switch (requestCode) {
-		case Constants.REQUEST_CONNECT_DEVICE_SECURE:
-			// When DeviceListActivity returns with a device to connect
-			if (resultCode == Activity.RESULT_OK) {
-				connectDevice(data, true);
-			}
-			break;
-		case Constants.REQUEST_CONNECT_DEVICE_INSECURE:
-			// When DeviceListActivity returns with a device to connect
-			if (resultCode == Activity.RESULT_OK) {
-				connectDevice(data, false);
-			}
-			break;
-		case Constants.REQUEST_ENABLE_BT:
-			// When the request to enable Bluetooth returns
-			if (resultCode == Activity.RESULT_OK) {
-				// Bluetooth is now enabled, so set up a chat session
-				setupChat();
-			} else {
-				// User did not enable Bluetooth or an error occurred
-				Log.d(TAG, "BT not enabled");
-				Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
-				finish();
-			}
-		}
-	}
+    private void setupChat() {
+        Log.d(TAG, "setupChat()");
 
-	private void connectDevice(Intent data, boolean secure) {
-		// Get the device MAC address
-		String address = data.getExtras()
-				.getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-		// Get the BluetoothDevice object
-		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-		// Attempt to connect to the device
-		mChatService.connect(device, secure);
-	}
+        // Initialize the BluetoothChatService to perform bluetooth connections
+        mChatService = new BluetoothChatService(this, mHandler);
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.option_menu, menu);
-		return true;
-	}
+        ensureDiscoverable();
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		Intent serverIntent = null;
-		switch (item.getItemId()) {
-		case R.id.secure_connect_scan:
-			// Launch the DeviceListActivity to see devices and do scan
-			serverIntent = new Intent(this, DeviceListActivity.class);
-			startActivityForResult(serverIntent, Constants.REQUEST_CONNECT_DEVICE_SECURE);
-			return true;
-		case R.id.insecure_connect_scan:
-			// Launch the DeviceListActivity to see devices and do scan
-			serverIntent = new Intent(this, DeviceListActivity.class);
-			startActivityForResult(serverIntent, Constants.REQUEST_CONNECT_DEVICE_INSECURE);
-			return true;
-		case R.id.discoverable:
-			// Ensure this device is discoverable by others
-			ensureDiscoverable();
-			return true;
-		}
-		return false;
-	}
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // Stop the Bluetooth chat services
+        if (mChatService != null) {
+            mChatService.stop();
+        }
+    }
+
+    private void ensureDiscoverable() {
+        if (D) {
+            Log.d(TAG, "ensure discoverable");
+        }
+        if (mBluetoothAdapter.getScanMode() != BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+            Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+            startActivity(discoverableIntent);
+        }
+    }
+
+    // The Handler that gets information back from the BluetoothChatService
+    private final Handler mHandler = new Handler() {
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case Constants.MESSAGE_STATE_CHANGE:
+                    if (D) {
+                        Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
+                    }
+                    switch (msg.arg1) {
+                        case BluetoothChatService.STATE_CONNECTED:
+                            //                        mConversationArrayAdapter.clear();
+                            break;
+                        case BluetoothChatService.STATE_CONNECTING:
+                            break;
+                        case BluetoothChatService.STATE_LISTEN:
+                        case BluetoothChatService.STATE_NONE:
+                            break;
+                    }
+                    break;
+                case Constants.MESSAGE_WRITE:
+                    //                    byte[] writeBuf = (byte[]) msg.obj;
+                    //                    // construct a string from the buffer
+                    //                    String writeMessage = new String(writeBuf);
+                    ////                    mConversationArrayAdapter.add("Me:  " + writeMessage);
+                    break;
+                case Constants.MESSAGE_READ:
+                    //                    byte[] readBuf = (byte[]) msg.obj;
+                    //                    // construct a string from the valid bytes in the buffer
+                    //                    String readMessage = new String(readBuf, 0, msg.arg1);
+                    ////                    mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+                    break;
+                case Constants.MESSAGE_DEVICE_NAME:
+                    // save the connected device's name
+                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
+                    Toast.makeText(getApplicationContext(), "Connected to " + mConnectedDeviceName, Toast.LENGTH_SHORT)
+                         .show();
+                    break;
+                case Constants.MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(),
+                                   msg.getData().getString(Constants.TOAST),
+                                   Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
+    };
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (D) {
+            Log.d(TAG, "onActivityResult " + resultCode);
+        }
+        switch (requestCode) {
+            case Constants.REQUEST_CONNECT_DEVICE_SECURE:
+                // When DeviceListActivity returns with a device to connect
+                if (resultCode == Activity.RESULT_OK) {
+                    connectDevice(data, true);
+                }
+                break;
+            case Constants.REQUEST_CONNECT_DEVICE_INSECURE:
+                // When DeviceListActivity returns with a device to connect
+                if (resultCode == Activity.RESULT_OK) {
+                    connectDevice(data, false);
+                }
+                break;
+            case Constants.REQUEST_ENABLE_BT:
+                // When the request to enable Bluetooth returns
+                if (resultCode == Activity.RESULT_OK) {
+                    // Bluetooth is now enabled, so set up a chat session
+                    setupChat();
+                } else {
+                    // User did not enable Bluetooth or an error occurred
+                    Log.d(TAG, "BT not enabled");
+                    Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
+                    finish();
+                }
+        }
+    }
+
+    private void connectDevice(Intent data, boolean secure) {
+        // Get the device MAC address
+        String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        // Get the BluetoothDevice object
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        // Attempt to connect to the device
+        mChatService.connect(device, secure);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.option_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        Intent serverIntent = null;
+        switch (item.getItemId()) {
+            case R.id.secure_connect_scan:
+                // Launch the DeviceListActivity to see devices and do scan
+                serverIntent = new Intent(this, DeviceListActivity.class);
+                startActivityForResult(serverIntent, Constants.REQUEST_CONNECT_DEVICE_SECURE);
+                return true;
+            case R.id.insecure_connect_scan:
+                // Launch the DeviceListActivity to see devices and do scan
+                serverIntent = new Intent(this, DeviceListActivity.class);
+                startActivityForResult(serverIntent, Constants.REQUEST_CONNECT_DEVICE_INSECURE);
+                return true;
+            case R.id.discoverable:
+                // Ensure this device is discoverable by others
+                ensureDiscoverable();
+                return true;
+        }
+        return false;
+    }
 }
