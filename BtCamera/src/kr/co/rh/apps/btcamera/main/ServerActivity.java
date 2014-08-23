@@ -12,6 +12,7 @@ import kr.co.rh.apps.btcamera.bluetooth.service.BluetoothChatService;
 import kr.co.rh.apps.btcamera.camera.CameraPreview;
 import kr.co.rh.apps.btcamera.comm.Constants;
 import kr.co.rh.apps.btcamera.comm.SingleMediaScanner;
+import kr.co.rh.apps.btcamera.comm.Constants.BtProtocol;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -187,25 +188,26 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Rect area = new Rect(0, 0, w, h);
 
+        Log.e("ssryu", "width : " + w + ", height : " + h);
         //screen size
-        //    		Size size1 = params.getPreviewSize();
+//            		Size size1 = params.getPreviewSize();
 
         //image size
-        Size size = params.getPictureSize();
+//        Size size = params.getPictureSize();
 
-        int max = size.height > size.width ? size.height : size.width;
-        int per = 2;
+//        int max = size.height > size.width ? size.height : size.width;
+//        int per = 2;
+//
+//        while (max >= 512) {
+//            max = max / per;
+//            per += 2;
+//        }
 
-        while (max >= 512) {
-            max = max / per;
-            per += 2;
-        }
-
-        BitmapFactory.Options opt = new BitmapFactory.Options();
-        opt.inSampleSize = per;
+//        BitmapFactory.Options opt = new BitmapFactory.Options();
+//        opt.inSampleSize = per;
 
         YuvImage image = new YuvImage(data, format, w, h, null);
-        image.compressToJpeg(area, 70, out);
+        image.compressToJpeg(area, 20, out);
 
         Log.e("ssryu", "area : " + area);
 
@@ -224,7 +226,7 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
         //    		}	
 
         isStop = false;
-        mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
+//        mBitmap = BitmapFactory.decodeByteArray(out.toByteArray(), 0, out.size(), opt);
         //    		mNextView.setImageBitmap(mBitmap);
 
         if (mChatService != null) {
@@ -232,8 +234,8 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
             //				Bitmap bmap = mNextView.getDrawingCache();
             //    			Log.e("ssryu", "before time : " + System.currentTimeMillis()/1000);
             //            Log.e("ssryu", "Bitmap size : " + mBitmap.getByteCount());
-            mChatService.write(mBitmap);
-            //            mChatService.writes(out.toByteArray());
+//            mChatService.write(mBitmap);
+                        mChatService.writes(out.toByteArray());
             Log.e("ssryu", "after time : " + System.currentTimeMillis() / 1000);
         }
 
@@ -343,10 +345,9 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
                     ////                    mConversationArrayAdapter.add("Me:  " + writeMessage);
                     break;
                 case Constants.MESSAGE_READ:
-                    //                    byte[] readBuf = (byte[]) msg.obj;
-                    //                    // construct a string from the valid bytes in the buffer
-                    //                    String readMessage = new String(readBuf, 0, msg.arg1);
-                    ////                    mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+                	if(msg.arg1 == BtProtocol.CODE_SHUTTER){
+                		btnSaveImg.performClick();
+                	}
                     break;
                 case Constants.MESSAGE_DEVICE_NAME:
                     // save the connected device's name

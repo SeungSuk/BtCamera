@@ -14,4 +14,11 @@ public class Constants {
     public static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
     public static final int REQUEST_ENABLE_BT = 3;
     
+    public class BtProtocol{
+    	public static final int CODE_IMAGE = 1;
+    	public static final int CODE_SHUTTER = 2;
+    	
+    	public static final int OPTION_NULL = 0;
+    }
+    
 }

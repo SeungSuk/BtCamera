@@ -3,6 +3,7 @@ package kr.co.rh.apps.btcamera.main;
 import kr.co.rh.apps.btcamera.R;
 import kr.co.rh.apps.btcamera.bluetooth.service.BluetoothChatService;
 import kr.co.rh.apps.btcamera.comm.Constants;
+import kr.co.rh.apps.btcamera.comm.Constants.BtProtocol;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -71,10 +72,9 @@ public class ClientActivity extends Activity {
         public void onClick(View view) {
             switch (view.getId()) {
                 case R.id.btnResolution:
-
                     break;
                 case R.id.btnShutter:
-
+                	mChatService.writeCode(BtProtocol.CODE_SHUTTER, BtProtocol.OPTION_NULL);
                     break;
 
                 default:
@@ -169,20 +169,22 @@ public class ClientActivity extends Activity {
                     // // mConversationArrayAdapter.add("Me:  " + writeMessage);
                     break;
                 case Constants.MESSAGE_READ:
+                	if(msg.arg1 == BtProtocol.CODE_IMAGE){
+                		byte[] image = (byte[])msg.obj;
+                		Bitmap breceived = BitmapFactory.decodeByteArray(image, 0, image.length);
+                        mImgMainView.setImageBitmap(breceived);
+                        if (bitmap != null) {
+                            bitmap.recycle();
+                        }
+                        bitmap = breceived;
+                	}
                     //				SendData data = (SendData) msg.obj;
                     //				Toast.makeText(getApplicationContext(), data.getTitle(),
                     //						Toast.LENGTH_SHORT).show();
                     //                    ByteArrayBuffer bab = (ByteArrayBuffer)msg.obj;
-                    byte[] image = (byte[])msg.obj;
+                    
                     //                    ByteBuffer bb = (ByteBuffer)msg.obj;
                     //                    bb.rewind();
-                    Bitmap breceived = BitmapFactory.decodeByteArray(image, 0, image.length);
-                    mImgMainView.setImageBitmap(breceived);
-                    if (bitmap != null) {
-                        bitmap.recycle();
-                    }
-                    bitmap = breceived;
-
                     Log.e("ssryu", "size : " + msg.arg1);
                     break;
                 case Constants.MESSAGE_DEVICE_NAME:

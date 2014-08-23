@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.UUID;
 
 import kr.co.rh.apps.btcamera.comm.Constants;
+import kr.co.rh.apps.btcamera.comm.Constants.BtProtocol;
 
 import org.apache.http.util.ByteArrayBuffer;
 
@@ -292,9 +293,26 @@ public class BluetoothChatService {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         img.compress(Bitmap.CompressFormat.JPEG, 70, stream);
         ByteBuffer bb = ByteBuffer.allocate(stream.toByteArray().length + 8);
-        bb.putInt(1);
+        bb.putInt(BtProtocol.CODE_IMAGE);
         bb.putInt(stream.toByteArray().length);
         bb.put(stream.toByteArray());
+        r.write(bb.array());
+    }
+    
+    public void writeCode(int code, int option){
+    	// Create temporary object
+        ConnectedThread r;
+        // Synchronize a copy of the ConnectedThread
+        synchronized (this) {
+            if (mState != STATE_CONNECTED) {
+                return;
+            }
+            r = mConnectedThread;
+        }
+        // Perform the write unsynchronized
+        ByteBuffer bb = ByteBuffer.allocate(8);
+        bb.putInt(code);
+        bb.putInt(option);
         r.write(bb.array());
     }
 
@@ -542,45 +560,51 @@ public class BluetoothChatService {
         public void run() {
             // Keep listening to the InputStream while connected
 
-            byte[] code = new byte[8];
+            byte[] defaultPacket = new byte[8];
             int bytes;
 
             while (true) {
                 try {
                     // Read from the InputStream
 
-                    bytes = mmInStream.read(code);
+                    bytes = mmInStream.read(defaultPacket);
                     if (bytes == 8) {
                         ByteBuffer bb = ByteBuffer.allocate(bytes);
-                        bb.put(code);
+                        bb.put(defaultPacket);
                         bb.rewind();
-                        int type = bb.getInt();
-                        int length = bb.getInt();
-                        Log.e("ssryu", "type : " + type);
-                        Log.e("ssryu", "length : " + length);
-                        int acc = 0;
-                        //                        ByteBuffer bbImage = ByteBuffer.allocate(length);
-                        ByteArrayBuffer bab = new ByteArrayBuffer(length);
-                        while (true) {
-                            byte[] image;
-                            if (acc >= length) {
-                                break;
-                            } else {
-                                if (length > acc + 1024) {
-                                    image = new byte[1024];
+                        int code = bb.getInt();
+                        int option = bb.getInt();
+                        Log.e("ssryu", "type : " + code);
+                        Log.e("ssryu", "length : " + option);
+                        if(code == BtProtocol.CODE_IMAGE){
+                        	int acc = 0;
+                            //                        ByteBuffer bbImage = ByteBuffer.allocate(length);
+                            ByteArrayBuffer bab = new ByteArrayBuffer(option);
+                            while (true) {
+                                byte[] image;
+                                if (acc >= option) {
+                                    break;
                                 } else {
-                                    image = new byte[length - acc];
+                                    if (option > acc + 1024) {
+                                        image = new byte[1024];
+                                    } else {
+                                        image = new byte[option - acc];
+                                    }
+                                    int tempAcc = mmInStream.read(image);
+                                    acc += tempAcc;
+                                    //                                bbImage.put(image);
+                                    bab.append(image, 0, tempAcc);
+                                    Log.e("ssryu", "acc : " + acc + ", length : " + option + ", bbImage : " + bab.length());
                                 }
-                                int tempAcc = mmInStream.read(image);
-                                acc += tempAcc;
-                                //                                bbImage.put(image);
-                                bab.append(image, 0, tempAcc);
-                                Log.e("ssryu", "acc : " + acc + ", length : " + length + ", bbImage : " + bab.length());
                             }
+                            mHandler.obtainMessage(Constants.MESSAGE_READ, code, option, bab.buffer()).sendToTarget();
+                        }else{
+                        	mHandler.obtainMessage(Constants.MESSAGE_READ, code, option, null).sendToTarget();
                         }
+                        
 
                         // Send the obtained bytes to the UI Activity
-                        mHandler.obtainMessage(Constants.MESSAGE_READ, type, -1, bab.buffer()).sendToTarget();
+                        
                         //                        mHandler.obtainMessage(Constants.MESSAGE_READ, type, -1, bbImage.array()).sendToTarget();
                     }
 
