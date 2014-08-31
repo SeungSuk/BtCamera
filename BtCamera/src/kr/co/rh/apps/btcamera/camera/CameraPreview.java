@@ -101,6 +101,7 @@ public class CameraPreview extends SurfaceView implements
 
 		mParameters = mCamera.getParameters();
 		// mParameters.setPreviewSize(width, height);
+		
 
 		mParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
 
@@ -187,6 +188,13 @@ public class CameraPreview extends SurfaceView implements
 		mCamera.release();
 		mCamera = null;
 
+	}
+	
+	public String getNowPictureSize(){
+		Camera.Size size = mParameters.getPictureSize();
+		String retSize = size.width + " / " + size.height;;
+		
+		return retSize;
 	}
 
 	private List<Camera.Size> getPictureSizes() {

@@ -22,6 +22,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
@@ -95,24 +96,43 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
             @Override
             public void onClick(View arg0) {
                 List<String> list = mCameraPreview.getStringPictureSizes();
+                
+                if(list == null){
+                	return ;
+                }
+                
+                String size = mCameraPreview.getNowPictureSize();
+                int select = 0;
+                
+                for(int i = 0 ; i < list.size(); i++){
+                	String tmp = list.get(i);
+                	if(tmp.equals(size)){
+                		select = i;
+                		break;
+                	}
+                }
+                
                 final ArrayAdapter<String> adapter = new ArrayAdapter<String>(ServerActivity.this,
                                                                               android.R.layout.simple_list_item_single_choice,
                                                                               list);
                 AlertDialog.Builder alert = new AlertDialog.Builder(ServerActivity.this);
-                alert.setAdapter(adapter, new OnClickListener() {
-
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        String size = adapter.getItem(which);
+                
+                alert.setSingleChoiceItems(adapter, select, new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						String size = adapter.getItem(which);
                         mCameraPreview.chgPictureSize(size);
-
+                        
+                        //상태 저장
+                        SharedPreferences prefs = getSharedPreferences("PrefName", MODE_PRIVATE);
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putString("PICTURE_SIZE", size);
+                        editor.commit();
+                        
                         dialog.dismiss();
-
-                    }
-                });                
-                
-                
+					}
+				});
                 
                 alert.show();
             }
