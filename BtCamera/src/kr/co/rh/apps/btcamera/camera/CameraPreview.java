@@ -5,15 +5,14 @@ package kr.co.rh.apps.btcamera.camera;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 
 import android.content.Context;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
+import android.hardware.Camera.Size;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
@@ -96,12 +95,23 @@ public class CameraPreview extends SurfaceView implements
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
+
+		Log.e("ttttttttttt", "surfaceChanged width : " + width
+				+ " /  height : " + height);
+
 		mParameters = mCamera.getParameters();
-		mParameters.setPreviewSize(width, height);
-		
-		//refresh
-		chgParameterSize();
-		
+		// mParameters.setPreviewSize(width, height);
+
+		mParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+
+		// refresh
+		// chgParameterSize();
+
+		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
+				height);
+		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
+		mCamera.setParameters(mParameters);
+
 		mCamera.startPreview();
 
 	}
@@ -183,6 +193,8 @@ public class CameraPreview extends SurfaceView implements
 
 		List<Camera.Size> pictureSizes = mParameters.getSupportedPictureSizes();
 
+		checkSupportedPictureSizeAtPreviewSize(pictureSizes);
+
 		return pictureSizes;
 	}
 
@@ -191,12 +203,47 @@ public class CameraPreview extends SurfaceView implements
 
 		return previewSizes;
 	}
-	
+
+	private void checkSupportedPictureSizeAtPreviewSize(
+			List<Camera.Size> pictureSizes) {
+		List<Camera.Size> previewSizes = getPreviewSizes();
+		Camera.Size pictureSize;
+		Camera.Size previewSize;
+		double pictureRatio = 0;
+		double previewRatio = 0;
+		final double aspectTolerance = 0.05;
+		boolean isUsablePicture = false;
+
+		for (int indexOfPicture = pictureSizes.size() - 1; indexOfPicture >= 0; --indexOfPicture) {
+			pictureSize = pictureSizes.get(indexOfPicture);
+			pictureRatio = (double) pictureSize.width
+					/ (double) pictureSize.height;
+			isUsablePicture = false;
+
+			for (int indexOfPreview = previewSizes.size() - 1; indexOfPreview >= 0; --indexOfPreview) {
+				previewSize = previewSizes.get(indexOfPreview);
+
+				previewRatio = (double) previewSize.width
+						/ (double) previewSize.height;
+
+				if (Math.abs(pictureRatio - previewRatio) < aspectTolerance) {
+					isUsablePicture = true;
+					break;
+				}
+			}
+
+			if (isUsablePicture == false) {
+				pictureSizes.remove(indexOfPicture);
+
+			}
+		}
+	}
+
 	public List<String> getStringPictureSizes() {
-		
+
 		List<String> list = new ArrayList<String>();
 		List<Camera.Size> pictureSizes = getPictureSizes();
-		for(Camera.Size size : pictureSizes){
+		for (Camera.Size size : pictureSizes) {
 			String strSize = size.width + " / " + size.height;
 			list.add(strSize);
 		}
@@ -204,76 +251,116 @@ public class CameraPreview extends SurfaceView implements
 		return list;
 	}
 
-	private void chgParameterSize(){
+	private void chgParameterSize() {
 		List<Camera.Size> listPrev = getPreviewSizes();
-		
+
 		int tempW = mParameters.getPictureSize().width;
 		int tempH = mParameters.getPictureSize().height;
-		
-		int result = 0 ;
+
+		Log.e("ttttttttttt", "pic width : " + tempW + " / pic height : "
+				+ tempH);
+
+		int result = 0;
 		int result2 = 0;
 		int picSum = 0;
 		int picSum2 = 0;
 		int soin = 2;
-		
-		while(tempW >= soin && tempH >= soin){
+
+		while (tempW >= soin && tempH >= soin) {
 			result = tempW % soin;
 			result2 = tempH % soin;
-			if(result == 0 && result2 == 0){
+			if (result == 0 && result2 == 0) {
 				picSum = tempW / soin;
 				picSum2 = tempH / soin;
-				
+
 				tempW = picSum;
 				tempH = picSum2;
-			}else {
+			} else {
 				soin++;
 			}
 		}
-		
-		for(Camera.Size size : listPrev){
+
+		for (Camera.Size size : listPrev) {
 			tempW = size.width;
 			tempH = size.height;
-			
+
 			result = 0;
 			result2 = 0;
-			
+
 			int preSum = 0;
 			int preSum2 = 0;
-			
+
 			soin = 2;
-			
+
 			while (tempW >= soin && tempH >= soin) {
 				result = tempW % soin;
 				result2 = tempH % soin;
-				
-				if(result == 0 && result2 == 0){
+
+				if (result == 0 && result2 == 0) {
 					preSum = tempW / soin;
 					preSum2 = tempH / soin;
-					
+
 					tempW = preSum;
 					tempH = preSum2;
-				}else {
+				} else {
 					soin++;
 				}
 			}
-			
-			if(picSum == preSum && picSum2 == preSum2){
+
+			if (picSum == preSum && picSum2 == preSum2) {
 				mParameters.setPreviewSize(size.width, size.height);
+				mCamera.setParameters(mParameters);
+
+				Log.e("ttttttttttt", "pre width : " + size.width
+						+ " / pre height : " + size.height);
 				break;
 			}
-		}		
+		}
 	}
-	
-	public void chgPictureSize(String size){
-		if(size == null || size.indexOf("/") < 0){
+
+	public void chgPictureSize(String size) {
+		if (size == null || size.indexOf("/") < 0) {
 			return;
 		}
-		
+
 		String[] arrSize = size.replace(" ", "").split("/");
-		
+
 		int w = Integer.parseInt(arrSize[0]);
 		int h = Integer.parseInt(arrSize[1]);
-		
+
 		mParameters.setPictureSize(w, h);
+
+		// refresh
+		// chgParameterSize();
+
+		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
+				h);
+		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
+		mCamera.setParameters(mParameters);
+
+		// mCamera.stopPreview();
+		// mCamera.startPreview();
+	}
+
+	private Camera.Size getCameraPreviewSize(List<Camera.Size> previewList,
+			double targetRatio, int targetHeight) {
+		final double aspectTolerance = 0.05;
+		double minDiff = Double.MAX_VALUE;
+		Size optimalSize = null;
+
+		for (Size size : previewList) {
+			double ratio = (double) size.width / size.height;
+
+			if (Math.abs(ratio - targetRatio) > aspectTolerance) {
+				continue;
+			}
+
+			if (Math.abs(size.height - targetHeight) < minDiff) {
+				optimalSize = size;
+				minDiff = Math.abs(size.height - targetHeight);
+			}
+		}
+
+		return optimalSize;
 	}
 }

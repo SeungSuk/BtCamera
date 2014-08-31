@@ -108,7 +108,10 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
                         dialog.dismiss();
 
                     }
-                });
+                });                
+                
+                
+                
                 alert.show();
             }
         });
