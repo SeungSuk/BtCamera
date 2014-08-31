@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import kr.co.rh.apps.btcamera.R;
@@ -244,13 +246,23 @@ public class ServerActivity extends Activity implements CameraPreview.IFChangeIm
 
     }
 
+    private final static String PATH_NAME = "bt_camera";
+    private final static String FILE_NAME = "%s_%s.jpg";
+    
     /**
      * 파일저장
      */
     @Override
     public void saveImage(byte[] data) {
-        String path = Environment.getExternalStorageDirectory() + File.separator + "test";
-        String fileNm = File.separator + "1.jpg";
+        String path = Environment.getExternalStorageDirectory() + File.separator + PATH_NAME;
+//        String fileNm = File.separator + "1.jpg";
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+        Date today = new Date();        
+        String format = sdf.format(today);
+        
+        String fileNm = File.separator + String.format(FILE_NAME, PATH_NAME, format);
+        
         FileOutputStream fo = null;
 
         try {
