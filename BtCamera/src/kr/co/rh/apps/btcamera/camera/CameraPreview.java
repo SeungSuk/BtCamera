@@ -7,12 +7,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import kr.co.rh.apps.btcamera.main.ServerActivity;
+
 import android.content.Context;
+import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.Toast;
@@ -30,7 +34,7 @@ public class CameraPreview extends SurfaceView implements
 	 * @author keirux
 	 * 
 	 */
-	public interface IFChangeImage {
+	public interface IFCameraPreviewTask {
 		/**
 		 * 이미지가 변경됐을때 호출
 		 * 
@@ -45,11 +49,18 @@ public class CameraPreview extends SurfaceView implements
 		 * @param data
 		 */
 		public void saveImage(byte[] data);
+		
+		/**
+		 * 터치시 포커스 이동
+		 * 
+		 * @param touchRect
+		 */
+		public void touchFocus(Rect touchRect);
 	}
 
 	private SurfaceHolder mHolder;
 	private Camera mCamera;
-	private IFChangeImage change;
+	private IFCameraPreviewTask change;
 
 	private Camera.Parameters mParameters;
 
@@ -88,7 +99,7 @@ public class CameraPreview extends SurfaceView implements
 
 	}
 
-	public void setChangeImage(IFChangeImage change) {
+	public void setChangeImage(IFCameraPreviewTask change) {
 		this.change = change;
 	}
 
@@ -96,21 +107,27 @@ public class CameraPreview extends SurfaceView implements
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
 
-		Log.e("ttttttttttt", "surfaceChanged width : " + width
-				+ " /  height : " + height);
-
-		mParameters = mCamera.getParameters();
-		// mParameters.setPreviewSize(width, height);
+		//type 
+		//1. 선택되어진 사진 사이즈에 맞춰 프리뷰 화면을 구상한다
+		//2.  포커스 설정
+		//
 		
+		mParameters = mCamera.getParameters();
+		
+		//사진사이즈와 프리뷰 화면을 맞춘다
+		
+		// mParameters.setPreviewSize(width, height);
 
 		mParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
 
 		// refresh
-		// chgParameterSize();
+		chgParameterSize();
 
-		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
-				height);
-		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
+//		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
+//				height);
+//		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
+
+		//카메라에 적용한다
 		mCamera.setParameters(mParameters);
 
 		mCamera.startPreview();
@@ -125,20 +142,41 @@ public class CameraPreview extends SurfaceView implements
 			mCamera.setPreviewDisplay(holder);
 
 			mCamera.setPreviewCallback(prev);
-
+			
 		} catch (IOException exception) {
 			mCamera.release();
 			mCamera = null;
 		}
 	}
-
-	public void takePicture() {
-		mCamera.takePicture(shutter, raw, jpeg);
-		Toast.makeText(getContext(), "save", 1000).show();
+	
+	public void restartCamera(){
 		try {
 			mCamera.startPreview();
 		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void autoFocusShow(){
+		Rect rect = new Rect(100,100, 100, 100);
+		mParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+		Camera.Area area = new Camera.Area(rect, 500);
+		ArrayList<Camera.Area> list = new ArrayList<Camera.Area>();
+		list.add(area);
+		mParameters.setFocusAreas(list);
+		
+		mCamera.autoFocus(autoFocus);
+	}
 
+	public void takePicture() {
+		mCamera.takePicture(shutter, raw, jpeg);
+		
+		Toast.makeText(getContext(), "save", 1000).show();
+		
+		try {
+			mCamera.startPreview();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -175,6 +213,18 @@ public class CameraPreview extends SurfaceView implements
 			change.chgImage(data, camera);
 		}
 	};
+	
+	Camera.AutoFocusCallback autoFocus = new  Camera.AutoFocusCallback() {
+		
+		@Override
+		public void onAutoFocus(boolean success, Camera camera) {
+			
+			if(success){
+				//mCamera.takePicture(null, null, null);
+			}
+			
+		}
+	};
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
@@ -190,6 +240,10 @@ public class CameraPreview extends SurfaceView implements
 
 	}
 	
+	/**
+	 * 현재 사진 사이즈를 리턴한다
+	 * @return
+	 */
 	public String getNowPictureSize(){
 		Camera.Size size = mParameters.getPictureSize();
 		String retSize = size.width + " / " + size.height;;
@@ -197,6 +251,10 @@ public class CameraPreview extends SurfaceView implements
 		return retSize;
 	}
 
+	/**
+	 * 해상도에 지원되는 사진 사이즈를 구한다
+	 * @return
+	 */
 	private List<Camera.Size> getPictureSizes() {
 
 		List<Camera.Size> pictureSizes = mParameters.getSupportedPictureSizes();
@@ -212,6 +270,10 @@ public class CameraPreview extends SurfaceView implements
 		return previewSizes;
 	}
 
+	/**
+	 * 해상도에 지원되는 사진 사이즈를 체크한다 
+	 * @param pictureSizes
+	 */
 	private void checkSupportedPictureSizeAtPreviewSize(
 			List<Camera.Size> pictureSizes) {
 		List<Camera.Size> previewSizes = getPreviewSizes();
@@ -247,6 +309,10 @@ public class CameraPreview extends SurfaceView implements
 		}
 	}
 
+	/**
+	 * 지원되는 사진 사이즈를 구한다
+	 * @return
+	 */
 	public List<String> getStringPictureSizes() {
 
 		List<String> list = new ArrayList<String>();
@@ -319,8 +385,6 @@ public class CameraPreview extends SurfaceView implements
 				mParameters.setPreviewSize(size.width, size.height);
 				mCamera.setParameters(mParameters);
 
-				Log.e("ttttttttttt", "pre width : " + size.width
-						+ " / pre height : " + size.height);
 				break;
 			}
 		}
@@ -339,36 +403,86 @@ public class CameraPreview extends SurfaceView implements
 		mParameters.setPictureSize(w, h);
 
 		// refresh
-		// chgParameterSize();
+		 chgParameterSize();
 
-		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
-				h);
-		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
-		mCamera.setParameters(mParameters);
+//		Camera.Size cameraSize = getCameraPreviewSize(getPreviewSizes(), 0.05,
+//				h);
+//		mParameters.setPreviewSize(cameraSize.width, cameraSize.height);
+//		mCamera.setParameters(mParameters);
 
 		// mCamera.stopPreview();
 		// mCamera.startPreview();
 	}
+	
+	private void setArea(Camera camera, List<Camera.Area> list) {
+	    boolean     enableFocusModeMacro = true;
+	     
+	    Camera.Parameters parameters;
+	    parameters = camera.getParameters();
+	 
+	    int         maxNumFocusAreas    = parameters.getMaxNumFocusAreas();
+	    int         maxNumMeteringAreas = parameters.getMaxNumMeteringAreas();
+	     
+	    if (maxNumFocusAreas > 0) {
+	        parameters.setFocusAreas(list);
+	    } 
+	 
+	    if (maxNumMeteringAreas > 0) {
+	        parameters.setMeteringAreas(list);
+	    }
+	     
+	    if (list == null || maxNumFocusAreas < 1 || maxNumMeteringAreas < 1) {
+	        enableFocusModeMacro = false;
+	    }
+	 
+	    if (enableFocusModeMacro == true) {
+	        /*
+	         * FOCUS_MODE_MACRO을 사용하여 근접 촬영이 가능하도록 해야 
+	         * 지정된 Focus 영역으로 초점이 좀더 선명하게 잡히는 것을 볼 수 있습니다. 
+	         */
+	        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_MACRO);
+	       
+	    } else {
+	        parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+	       
+	    }
+	    camera.setParameters(parameters);
+	}
+	
+	public void touchFocus(Rect targetFocusRect){
+		mCamera.stopFaceDetection();
+	
+		final List<Camera.Area> focusList = new ArrayList<Camera.Area>();
+		Camera.Area focusArea = new Camera.Area(targetFocusRect, 1000);
+		
+		focusList.add(focusArea);
 
-	private Camera.Size getCameraPreviewSize(List<Camera.Size> previewList,
-			double targetRatio, int targetHeight) {
-		final double aspectTolerance = 0.05;
-		double minDiff = Double.MAX_VALUE;
-		Size optimalSize = null;
+		Camera.Parameters para = mCamera.getParameters();
+		para.setFocusAreas(focusList);
+		para.setMeteringAreas(focusList);
+		mCamera.setParameters(para);
 
-		for (Size size : previewList) {
-			double ratio = (double) size.width / size.height;
-
-			if (Math.abs(ratio - targetRatio) > aspectTolerance) {
-				continue;
-			}
-
-			if (Math.abs(size.height - targetHeight) < minDiff) {
-				optimalSize = size;
-				minDiff = Math.abs(size.height - targetHeight);
-			}
+		mCamera.autoFocus(autoFocus);
+	}
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		if(event.getAction() == MotionEvent.ACTION_DOWN){
+			float x = event.getX();
+			float y = event.getY();
+			float touchMajor = event.getTouchMajor();
+			float touchMinor = event.getTouchMinor();
+			
+			Rect touchRect = new Rect(
+					(int)(x - touchMajor / 2),
+					(int)(y - touchMinor / 2 ),
+					(int)(x + touchMajor / 2),
+					(int)(y + touchMinor / 2 )
+					);
+			
+			this.change.touchFocus(touchRect);
 		}
-
-		return optimalSize;
+		
+		return true;
 	}
 }
