@@ -1,5 +1,9 @@
 package kr.co.rh.apps.btcamera.main;
 
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
+
 import kr.co.rh.apps.btcamera.R;
 import kr.co.rh.apps.btcamera.bluetooth.service.BluetoothChatService;
 import kr.co.rh.apps.btcamera.comm.Constants;
@@ -74,7 +78,7 @@ public class ClientActivity extends Activity {
                 case R.id.btnResolution:
                     break;
                 case R.id.btnShutter:
-                	mChatService.writeCode(BtProtocol.CODE_SHUTTER, BtProtocol.OPTION_NULL);
+                    mChatService.writeCode(BtProtocol.CODE_SHUTTER, BtProtocol.OPTION_NULL);
                     break;
 
                 default:
@@ -154,6 +158,7 @@ public class ClientActivity extends Activity {
                     switch (msg.arg1) {
                         case BluetoothChatService.STATE_CONNECTED:
                             // mConversationArrayAdapter.clear();
+                            mChatService.writeCode(BtProtocol.CODE_REQUEST_INIT, BtProtocol.OPTION_NULL);
                             break;
                         case BluetoothChatService.STATE_CONNECTING:
                             break;
@@ -169,23 +174,50 @@ public class ClientActivity extends Activity {
                     // // mConversationArrayAdapter.add("Me:  " + writeMessage);
                     break;
                 case Constants.MESSAGE_READ:
-                	if(msg.arg1 == BtProtocol.CODE_IMAGE){
-                		byte[] image = (byte[])msg.obj;
-                		Bitmap breceived = BitmapFactory.decodeByteArray(image, 0, image.length);
+                    if (msg.arg1 == BtProtocol.CODE_IMAGE) {
+                        byte[] image = (byte[])msg.obj;
+                        Bitmap breceived = BitmapFactory.decodeByteArray(image, 0, image.length);
                         mImgMainView.setImageBitmap(breceived);
                         if (bitmap != null) {
                             bitmap.recycle();
                         }
                         bitmap = breceived;
-                	}
+                    } else if (msg.arg1 == BtProtocol.CODE_REVOLUTION) {
+
+                        String readData = "";
+                        try {
+                            readData = new String((byte[])msg.obj, "UTF-8");
+                        } catch (UnsupportedEncodingException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                        Log.e("ssryu", "readData : " + readData);
+                    } else if (msg.arg1 == BtProtocol.CODE_REVOLUTION_LIST) {
+                        String readData = "";
+                        try {
+                            readData = new String((byte[])msg.obj, "UTF-8");
+                        } catch (UnsupportedEncodingException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                        if (readData.contains("&")) {
+                            String[] splitData = readData.split("&");
+                            List<String> arr = new ArrayList<String>();
+                            for (int i = 0, size = splitData.length; i < size; i++) {
+                                arr.add(splitData[i]);
+                            }
+                            Log.e("ssryu", "data : " + arr.toString());
+                        }
+
+                    }
                     //				SendData data = (SendData) msg.obj;
                     //				Toast.makeText(getApplicationContext(), data.getTitle(),
                     //						Toast.LENGTH_SHORT).show();
                     //                    ByteArrayBuffer bab = (ByteArrayBuffer)msg.obj;
-                    
+
                     //                    ByteBuffer bb = (ByteBuffer)msg.obj;
                     //                    bb.rewind();
-                    Log.e("ssryu", "size : " + msg.arg1);
+                    //                    Log.e("ssryu", "size : " + msg.arg1);
                     break;
                 case Constants.MESSAGE_DEVICE_NAME:
                     // save the connected device's name

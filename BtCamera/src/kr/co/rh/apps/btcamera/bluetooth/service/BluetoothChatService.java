@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -298,9 +299,9 @@ public class BluetoothChatService {
         bb.put(stream.toByteArray());
         r.write(bb.array());
     }
-    
-    public void writeCode(int code, int option){
-    	// Create temporary object
+
+    public void writeCode(int code, int option) {
+        // Create temporary object
         ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
         synchronized (this) {
@@ -313,6 +314,28 @@ public class BluetoothChatService {
         ByteBuffer bb = ByteBuffer.allocate(8);
         bb.putInt(code);
         bb.putInt(option);
+        r.write(bb.array());
+    }
+
+    public void writeCodeString(int code, String data) {
+        ConnectedThread r;
+        // Synchronize a copy of the ConnectedThread
+        synchronized (this) {
+            if (mState != STATE_CONNECTED) {
+                return;
+            }
+            r = mConnectedThread;
+        }
+        // Perform the write unsynchronized
+        ByteBuffer bb = ByteBuffer.allocate(8 + data.length());
+        bb.putInt(code);
+        bb.putInt(data.length());
+        try {
+            bb.put(data.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         r.write(bb.array());
     }
 
@@ -574,10 +597,11 @@ public class BluetoothChatService {
                         bb.rewind();
                         int code = bb.getInt();
                         int option = bb.getInt();
-                        Log.e("ssryu", "type : " + code);
-                        Log.e("ssryu", "length : " + option);
-                        if(code == BtProtocol.CODE_IMAGE){
-                        	int acc = 0;
+                        //                        Log.e("ssryu", "type : " + code);
+                        //                        Log.e("ssryu", "length : " + option);
+                        if (code == BtProtocol.CODE_IMAGE || code == BtProtocol.CODE_REVOLUTION
+                            || code == BtProtocol.CODE_REVOLUTION_LIST) {
+                            int acc = 0;
                             //                        ByteBuffer bbImage = ByteBuffer.allocate(length);
                             ByteArrayBuffer bab = new ByteArrayBuffer(option);
                             while (true) {
@@ -594,17 +618,17 @@ public class BluetoothChatService {
                                     acc += tempAcc;
                                     //                                bbImage.put(image);
                                     bab.append(image, 0, tempAcc);
-                                    Log.e("ssryu", "acc : " + acc + ", length : " + option + ", bbImage : " + bab.length());
+                                    //                                    Log.e("ssryu",
+                                    //                                          "acc : " + acc + ", length : " + option + ", bbImage : " + bab.length());
                                 }
                             }
                             mHandler.obtainMessage(Constants.MESSAGE_READ, code, option, bab.buffer()).sendToTarget();
-                        }else{
-                        	mHandler.obtainMessage(Constants.MESSAGE_READ, code, option, null).sendToTarget();
+                        } else {
+                            mHandler.obtainMessage(Constants.MESSAGE_READ, code, option, null).sendToTarget();
                         }
-                        
 
                         // Send the obtained bytes to the UI Activity
-                        
+
                         //                        mHandler.obtainMessage(Constants.MESSAGE_READ, type, -1, bbImage.array()).sendToTarget();
                     }
 
